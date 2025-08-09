@@ -1,0 +1,12 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Streamlit App",
+            "type": "shell",
+            "command": "conda activate papertrading && streamlit run app.py",
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}
