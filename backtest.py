@@ -72,7 +72,7 @@ def backtest(df: pd.DataFrame):
     }, tr
 
 if __name__ == "__main__":
-    df = fetch_bars('BTC/USD', TimeFrame.Day, days=360)
+    df = fetch_bars('BTC/USD', TimeFrame.Minute, days=120)
     summary, trades = backtest(df)
     print(summary)
     trades.to_csv('trades.csv', index=False)

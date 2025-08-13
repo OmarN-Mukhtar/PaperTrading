@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 import pandas as pd
 
 from alpaca.data.requests import CryptoBarsRequest
-from alpaca.data.timeframe import TimeFrame
+from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 from alpaca.data.enums import CryptoFeed
 
 from alpaca.trading.requests import MarketOrderRequest
