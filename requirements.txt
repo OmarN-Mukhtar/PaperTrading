@@ -1,7 +1,0 @@
-streamlit
-alpaca-trade-api
-arch
-statsmodels
-pandas
-numpy
-dotenv
