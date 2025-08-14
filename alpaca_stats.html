@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alpaca Account Stats</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; }
+        .stats { margin-bottom: 2em; }
+        .positions-table { border-collapse: collapse; width: 100%; }
+        .positions-table th, .positions-table td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        .positions-table th { background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Alpaca Account Stats</h1>
+    <div class="stats">
+        <img src="equity_bar.png" alt="Equity Bar Chart" style="max-width:400px;">
+        <h2>Returns</h2>
+        <ul id="returns-list"></ul>
+        <h2>Account Equity</h2>
+        <div>Current Equity: <span id="equity"></span> USD</div>
+        <div>Initial Equity: <span id="initial-equity"></span> USD</div>
+        <div>Last Updated: <span id="last-updated"></span></div>
+    </div>
+    <h2>Open Positions</h2>
+    <table class="positions-table" id="positions-table">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Quantity</th>
+                <th>Market Value</th>
+                <th>Unrealized P/L</th>
+                <th>Unrealized P/L %</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <script>
+    fetch('alpaca_stats.json')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('equity').textContent = data.equity.toFixed(2);
+            document.getElementById('initial-equity').textContent = data.initial_equity.toFixed(2);
+            document.getElementById('last-updated').textContent = new Date(data.last_updated).toLocaleString();
+            // Returns
+            const returnsList = document.getElementById('returns-list');
+            for (const [key, value] of Object.entries(data.returns)) {
+                const li = document.createElement('li');
+                li.textContent = `${key.replace(/_/g, ' ')}: ${value !== null ? value.toFixed(2) + '%' : 'N/A'}`;
+                returnsList.appendChild(li);
+            }
+            // Positions
+            const tbody = document.getElementById('positions-table').querySelector('tbody');
+            data.positions.forEach(pos => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${pos.symbol}</td>
+                    <td>${pos.qty}</td>
+                    <td>${parseFloat(pos.market_value).toFixed(2)}</td>
+                    <td>${parseFloat(pos.unrealized_pl).toFixed(2)}</td>
+                    <td>${(parseFloat(pos.unrealized_plpc) * 100).toFixed(2)}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+    </script>
+</body>
+</html>
