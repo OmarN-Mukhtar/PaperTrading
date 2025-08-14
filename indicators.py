@@ -1,7 +1,7 @@
 import pandas as pd
 import pandas_ta as ta
 
-def add_indicators(df: pd.DataFrame, fast=50, slow=20000, rsi_lens=14):
+def add_indicators(df: pd.DataFrame, fast=1, slow=10, rsi_lens=5):
     df = df.copy()
     df['ema_fast'] = ta.ema(df['close'], length=fast)
     df['ema_slow'] = ta.ema(df['close'], length=slow)

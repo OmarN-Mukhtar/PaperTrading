@@ -13,7 +13,7 @@ from indicators import add_indicators
 from config import data_client, trading_client
 
 SYMBOL = 'BTC/USD'
-TIMEFRAME = TimeFrame.Minute
+TIMEFRAME = TimeFrame.Day
 NOTIONAL_USD = 100.0
 
 def latest_df(n=300):

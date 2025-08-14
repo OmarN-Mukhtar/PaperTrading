@@ -3,3 +3,5 @@ numpy
 alpaca-py
 python-dotenv
 pandas_ta
+arch
+statsmodels

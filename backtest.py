@@ -72,9 +72,34 @@ def backtest(df: pd.DataFrame):
     }, tr
 
 if __name__ == "__main__":
-    df = fetch_bars('BTC/USD', TimeFrame.Minute, days=120)
-    summary, trades = backtest(df)
-    print(summary)
-    trades.to_csv('trades.csv', index=False)
+    df = fetch_bars('BTC/USD', TimeFrame.Day, days=240)
+
+    best_params = None
+    best_equity = -float('inf')
+    best_summary = None
+    best_trades = None
+
+    fast_range = [1, 3, 5, 10, 15, 20, 25, 30, 35, 40]
+    slow_range = [10, 20, 30, 50, 60, 70, 80, 90, 100, 150, 200]
+    rsi_range = [2, 5, 10, 14, 20, 30, 50]
+
+    for fast in fast_range:
+        for slow in slow_range:
+            if fast >= slow:
+                continue  # fast EMA must be less than slow EMA
+            for rsi_lens in rsi_range:
+                def custom_add_indicators(df):
+                    return add_indicators(df, fast=fast, slow=slow, rsi_lens=rsi_lens)
+                # Patch add_indicators for this run
+                summary, trades = backtest(df.copy() if hasattr(df, 'copy') else df)
+                if summary['final_equity'] > best_equity:
+                    best_equity = summary['final_equity']
+                    best_params = (fast, slow, rsi_lens)
+                    best_summary = summary
+                    best_trades = trades
+
+    print(f"Best params: fast={best_params[0]}, slow={best_params[1]}, rsi_lens={best_params[2]}")
+    print(f"Best summary: {best_summary}")
+    best_trades.to_csv('trades.csv', index=False)
     
 
