@@ -1,0 +1,52 @@
+name: Deploy Alpaca Stats to Website Repo
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'  # Every hour
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trading repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Alpaca stats script
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+        run: |
+          python alpaca_stats.py
+
+      - name: Checkout website repos
+        uses: actions/checkout@v4
+        with:
+          repository: OmarN-Mukhtar/OmarN-Mukhtar.github.io
+          token: ${{ secrets.WEBSITE_REPO_TOKEN }}
+          path: website
+
+      - name: Copy stats to website repo
+        run: |
+          cp alpaca_stats.html alpaca_stats.json equity_bar.png website/
+
+      - name: Commit and push to website repo
+        run: |
+          cd website
+          git config user.name "OmarN-Mukhtar"
+          git config user.email "omarnabilmukhtar@gmail.com"
+          git add alpaca_stats.html alpaca_stats.json equity_bar.png
+          git commit -m "Update Alpaca stats from trading repo" || echo "No changes to commit"
+          git push

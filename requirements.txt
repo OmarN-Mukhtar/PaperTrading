@@ -6,3 +6,5 @@ pandas_ta
 arch
 statsmodels
 skforecast
+arch
+pmdarima
