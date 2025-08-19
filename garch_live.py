@@ -26,6 +26,7 @@ import pandas as pd
 from alpaca.data.requests import CryptoBarsRequest
 from alpaca.data.timeframe import TimeFrame
 from alpaca.data.enums import CryptoFeed
+import requests
 from alpaca.trading.enums import OrderSide, TimeInForce
 from alpaca.trading.requests import MarketOrderRequest
 
@@ -51,13 +52,22 @@ SCALE = 100.0
 # ----------------------------------------------------
 
 
-def fetch_bars(symbol: str = SYMBOL, timeframe: TimeFrame = TIMEFRAME, days: int = LOOKBACK_DAYS) -> pd.DataFrame:
-    end = datetime.now(timezone.utc)
-    start = end - timedelta(days=days)
-    req = CryptoBarsRequest(symbol_or_symbols=symbol, timeframe=timeframe, start=start, end=end)
-    bars = data_client.get_crypto_bars(req, feed=CryptoFeed.US).df
-    df = bars.xs(symbol).tz_convert("UTC").sort_index()
-    return df[["open","high","low","close","volume"]]
+def fetch_bars(symbol: str = SYMBOL, timeframe: TimeFrame = TIMEFRAME, days: int = LOOKBACK_DAYS, retries: int = 3, delay: int = 10) -> pd.DataFrame:
+    for attempt in range(retries):
+        try:
+            end = datetime.now(timezone.utc)
+            start = end - timedelta(days=days)
+            req = CryptoBarsRequest(symbol_or_symbols=symbol, timeframe=timeframe, start=start, end=end)
+            bars = data_client.get_crypto_bars(req, feed=CryptoFeed.US).df
+            df = bars.xs(symbol).tz_convert("UTC").sort_index()
+            return df[["open","high","low","close","volume"]]
+        except requests.exceptions.ReadTimeout:
+            print(f"[WARN] Read timeout, retrying ({attempt+1}/{retries})...")
+            time.sleep(delay)
+        except Exception as e:
+            print(f"[ERROR] fetch_bars: {e}")
+            time.sleep(delay)
+    raise RuntimeError("Failed to fetch bars after retries")
 
 
 def latest_closed_ts(df: pd.DataFrame) -> pd.Timestamp:
