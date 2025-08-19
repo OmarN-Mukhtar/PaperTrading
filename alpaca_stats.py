@@ -42,7 +42,7 @@ ts = pd.to_datetime(timestamps, unit="s", utc=True) if len(timestamps) else pd.t
 eq = pd.Series(equities, index=ts).sort_index().astype(float) if len(equities) else pd.Series(dtype=float)
 
 equity = float(eq.iloc[-1]) if len(eq) else 0.0
-initial_equity = float(eq.iloc[0]) if len(eq) else equity
+initial_equity = float(100000)
 last_equity = float(eq.iloc[-2]) if len(eq) > 1 else equity
 
 def calc_return(start_equity, end_equity):
@@ -106,7 +106,6 @@ with open("alpaca_stats.html", "w") as f:
 <body>
     <h1>Alpaca Account Stats</h1>
     <div class=\"stats\">
-        <img src=\"equity_bar.png\" alt=\"Equity Bar Chart\" style=\"max-width:400px;\">
         <h2>Returns</h2>
         <ul id=\"returns-list\"></ul>
         <h2>Account Equity</h2>
