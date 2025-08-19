@@ -45,7 +45,7 @@ jobs:
 
       - name: Commit and push to website repo
         run: |
-          cd website
+          cd website/assets
           git config user.name "OmarN-Mukhtar"
           git config user.email "omarnabilmukhtar@gmail.com"
           git add alpaca_stats.html alpaca_stats.json equity_bar.png

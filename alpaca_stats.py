@@ -82,7 +82,6 @@ stats = {
     "last_equity": last_equity,
     "returns": returns,
     "positions": positions_df.to_dict(orient="records"),
-    "recent_fills": [],
     "last_updated": now_utc.isoformat(),
 }
 
@@ -126,19 +125,6 @@ with open("alpaca_stats.html", "w") as f:
         </thead>
         <tbody></tbody>
     </table>
-    <h2>Recent Fills</h2>
-    <table class=\"fills-table\" id=\"fills-table\">
-        <thead>
-            <tr>
-                <th>Symbol</th>
-                <th>Side</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>Time</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
     <script>
     fetch('alpaca_stats.json')
         .then(response => response.json())
@@ -171,26 +157,6 @@ with open("alpaca_stats.html", "w") as f:
                     `;
                     positionsTbody.appendChild(tr);
                 });
-            }
-            // Recent Fills
-            const fillsTbody = document.getElementById('fills-table').querySelector('tbody');
-            fillsTbody.innerHTML = '';
-            if (Array.isArray(data.recent_fills) && data.recent_fills.length > 0) {
-                data.recent_fills.forEach(fill => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${fill.symbol ?? ''}</td>
-                        <td>${fill.side ?? ''}</td>
-                        <td>${fill.qty ?? ''}</td>
-                        <td>${fill.price !== undefined ? parseFloat(fill.price).toFixed(2) : ''}</td>
-                        <td>${fill.time ? new Date(fill.time).toLocaleString() : ''}</td>
-                    `;
-                    fillsTbody.appendChild(tr);
-                });
-            } else {
-                const tr = document.createElement('tr');
-                tr.innerHTML = '<td colspan="5">No recent fills</td>';
-                fillsTbody.appendChild(tr);
             }
         });
     </script>
