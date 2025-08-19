@@ -40,6 +40,7 @@ jobs:
 
       - name: Copy stats to website repo
         run: |
+          mkdir -p website/assets
           cp alpaca_stats.html alpaca_stats.json equity_bar.png website/
 
       - name: Commit and push to website repo
