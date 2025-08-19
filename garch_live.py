@@ -47,6 +47,7 @@ TARGET_VOL_PER_HOUR = TARGET_DAILY_VOL / sqrt(BARS_PER_DAY)
 MAX_LEVERAGE = 0.1
 POLL_SECONDS = 30
 MIN_TRADE_USD = 25.0    # skip dust adjustments
+SCALE = 100.0
 # ----------------------------------------------------
 
 
@@ -68,17 +69,27 @@ def forecast_sigma_next(df: pd.DataFrame) -> float:
     r = df["close"].pct_change().dropna()
     if len(r) < MIN_TRAIN + 2:
         return np.nan
-    r_train = r.iloc[-MIN_TRAIN:]
-    am = arch_model(r_train, mean="Zero", vol="GARCH", p=1, q=1, dist="t").fit(disp="off")
+    r_train = r.iloc[-MIN_TRAIN:] * SCALE 
+    am = arch_model(r_train, mean="Zero", vol="GARCH", p=1, q=1, dist="t", rescale=False).fit(disp="off")
     sigma_next = float(am.forecast(horizon=1).variance.iloc[-1, 0]) ** 0.5
-    return sigma_next
+    return sigma_next / SCALE
 
 
-def get_account_equity_and_bp() -> tuple[float, float]:
+def get_equity_and_cash() -> tuple[float, float]:
+    """
+    Return (equity, cash) where `cash` is USD available for crypto.
+    For crypto on Alpaca, cash is the correct cap for buys.
+    """
     acct = trading_client.get_account()
     equity = float(acct.equity)
-    buying_power = float(getattr(acct, "buying_power", equity))  # crypto may reflect cash balance
-    return equity, buying_power
+    # Prefer explicit cash; fall back to non_marginable_buying_power if present
+    cash = float(getattr(acct, "cash", 0.0) or 0.0)
+    if cash <= 0 and hasattr(acct, "non_marginable_buying_power"):
+        try:
+            cash = float(acct.non_marginable_buying_power)
+        except Exception:
+            pass
+    return equity, cash
 
 
 def get_open_qty(symbol: str) -> float:
@@ -133,27 +144,40 @@ def run_live():
                 last_ts = ts
                 continue
 
-            frac = np.clip(TARGET_VOL_PER_HOUR / (sigma + 1e-12), 0, MAX_LEVERAGE)
+            # --- sizing (cash-aware) ---
+            frac = float(np.clip(TARGET_VOL_PER_HOUR / max(sigma, 1e-6), 0, MAX_LEVERAGE))
 
-            equity, buying_power = get_account_equity_and_bp()
+            equity, cash = get_equity_and_cash()
             px = float(df["close"].iloc[-1])
-            desired_notional = min(equity * frac, buying_power * 0.98)  # safety margin
+            target_notional = equity * frac
+
             qty = get_open_qty(SYMBOL)
             current_notional = qty * px
+            delta = target_notional - current_notional
 
-            delta = desired_notional - current_notional
-
-            print(f"[DEBUG] ts={ts} sigma={sigma:.6f} frac={frac:.3f} price={px:.2f} "
-                  f"equity={equity:.2f} desired=${desired_notional:.2f} current=${current_notional:.2f} "
-                  f"delta=${delta:.2f}")
+            print(f"[DEBUG] ts={ts} sigma={sigma:.6f} frac={frac:.3f} px={px:.2f} "
+                f"equity={equity:.2f} cash={cash:.2f} target=${target_notional:.2f} "
+                f"current=${current_notional:.2f} delta=${delta:.2f}")
 
             if abs(delta) < MIN_TRADE_USD:
-                print("[ACTION] delta below MIN_TRADE_USD -> HOLD")
+                print("[ACTION] delta < MIN_TRADE_USD -> HOLD")
+
             elif delta > 0:
-                submit_buy_notional(SYMBOL, delta)
+                # BUY: clamp by available cash (leave a few dollars as buffer)
+                buy_notional = min(delta, max(cash - 5.0, 0.0))
+                if buy_notional < MIN_TRADE_USD:
+                    print("[ACTION] insufficient cash -> HOLD")
+                else:
+                    submit_buy_notional(SYMBOL, buy_notional)
+
             else:
-                sell_qty = abs(delta) / px
-                submit_sell_qty(SYMBOL, sell_qty)
+                # SELL: never sell more than you own
+                sell_qty = min(abs(delta) / px, qty)
+                if sell_qty * px < MIN_TRADE_USD:
+                    print("[ACTION] tiny sell -> HOLD")
+                else:
+                    submit_sell_qty(SYMBOL, sell_qty)
+
 
             last_ts = ts
 
