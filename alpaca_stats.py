@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import PortfolioHistoryRequest
+from alpaca.trading.models import PortfolioHistory
 import matplotlib.pyplot as plt
 import json
 
@@ -25,7 +25,7 @@ positions_df = pd.DataFrame([{
 } for p in positions]) if positions else pd.DataFrame(columns=["symbol","qty","market_value","unrealized_pl","unrealized_plpc"])
 
 # Portfolio history (daily for ~3 months)
-req = PortfolioHistoryRequest(period="3M", timeframe="1D", extended_hours=True)
+req = PortfolioHistory(period="3M", timeframe="1D", extended_hours=True)
 hist = trading_client.get_portfolio_history(req)
 
 # Build equity series
