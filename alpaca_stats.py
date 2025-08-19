@@ -91,31 +91,31 @@ with open("alpaca_stats.json", "w") as f:
 
 with open("alpaca_stats.html", "w") as f:
     f.write("""<!DOCTYPE html>
-<html lang="en">
+<html lang=\"en\">
 <head>
-    <meta charset="UTF-8">
+    <meta charset=\"UTF-8\">
     <title>Alpaca Account Stats</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 2em; }
         .stats { margin-bottom: 2em; }
-        .positions-table { border-collapse: collapse; width: 100%; }
-        .positions-table th, .positions-table td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-        .positions-table th { background: #f0f0f0; }
+        .positions-table, .fills-table { border-collapse: collapse; width: 100%; }
+        .positions-table th, .positions-table td, .fills-table th, .fills-table td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        .positions-table th, .fills-table th { background: #f0f0f0; }
     </style>
 </head>
 <body>
     <h1>Alpaca Account Stats</h1>
-    <div class="stats">
-        <img src="equity_bar.png" alt="Equity Bar Chart" style="max-width:400px;">
+    <div class=\"stats\">
+        <img src=\"equity_bar.png\" alt=\"Equity Bar Chart\" style=\"max-width:400px;\">
         <h2>Returns</h2>
-        <ul id="returns-list"></ul>
+        <ul id=\"returns-list\"></ul>
         <h2>Account Equity</h2>
-        <div>Current Equity: <span id="equity"></span> USD</div>
-        <div>Initial Equity: <span id="initial-equity"></span> USD</div>
-        <div>Last Updated: <span id="last-updated"></span></div>
+        <div>Current Equity: <span id=\"equity\"></span> USD</div>
+        <div>Initial Equity: <span id=\"initial-equity\"></span> USD</div>
+        <div>Last Updated: <span id=\"last-updated\"></span></div>
     </div>
     <h2>Open Positions</h2>
-    <table class="positions-table" id="positions-table">
+    <table class=\"positions-table\" id=\"positions-table\">
         <thead>
             <tr>
                 <th>Symbol</th>
@@ -127,33 +127,72 @@ with open("alpaca_stats.html", "w") as f:
         </thead>
         <tbody></tbody>
     </table>
+    <h2>Recent Fills</h2>
+    <table class=\"fills-table\" id=\"fills-table\">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Side</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Time</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
     <script>
     fetch('alpaca_stats.json')
         .then(response => response.json())
         .then(data => {
-            document.getElementById('equity').textContent = data.equity.toFixed(2);
-            document.getElementById('initial-equity').textContent = data.initial_equity.toFixed(2);
-            document.getElementById('last-updated').textContent = new Date(data.last_updated).toLocaleString();
+            document.getElementById('equity').textContent = (data.equity ?? 0).toFixed(2);
+            document.getElementById('initial-equity').textContent = (data.initial_equity ?? 0).toFixed(2);
+            document.getElementById('last-updated').textContent = data.last_updated ? new Date(data.last_updated).toLocaleString() : '';
             // Returns
             const returnsList = document.getElementById('returns-list');
-            for (const [key, value] of Object.entries(data.returns)) {
-                const li = document.createElement('li');
-                li.textContent = `${key.replace(/_/g, ' ')}: ${value !== null ? value.toFixed(2) + '%' : 'N/A'}`;
-                returnsList.appendChild(li);
+            returnsList.innerHTML = '';
+            if (data.returns) {
+                for (const [key, value] of Object.entries(data.returns)) {
+                    const li = document.createElement('li');
+                    li.textContent = `${key.replace(/_/g, ' ')}: ${value !== null && value !== undefined ? value.toFixed(2) + '%' : 'N/A'}`;
+                    returnsList.appendChild(li);
+                }
             }
             // Positions
-            const tbody = document.getElementById('positions-table').querySelector('tbody');
-            data.positions.forEach(pos => {
+            const positionsTbody = document.getElementById('positions-table').querySelector('tbody');
+            positionsTbody.innerHTML = '';
+            if (Array.isArray(data.positions)) {
+                data.positions.forEach(pos => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${pos.symbol ?? ''}</td>
+                        <td>${pos.qty ?? ''}</td>
+                        <td>${pos.market_value !== undefined ? parseFloat(pos.market_value).toFixed(2) : ''}</td>
+                        <td>${pos.unrealized_pl !== undefined ? parseFloat(pos.unrealized_pl).toFixed(2) : ''}</td>
+                        <td>${pos.unrealized_plpc !== undefined ? (parseFloat(pos.unrealized_plpc) * 100).toFixed(2) + '%' : ''}</td>
+                    `;
+                    positionsTbody.appendChild(tr);
+                });
+            }
+            // Recent Fills
+            const fillsTbody = document.getElementById('fills-table').querySelector('tbody');
+            fillsTbody.innerHTML = '';
+            if (Array.isArray(data.recent_fills) && data.recent_fills.length > 0) {
+                data.recent_fills.forEach(fill => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${fill.symbol ?? ''}</td>
+                        <td>${fill.side ?? ''}</td>
+                        <td>${fill.qty ?? ''}</td>
+                        <td>${fill.price !== undefined ? parseFloat(fill.price).toFixed(2) : ''}</td>
+                        <td>${fill.time ? new Date(fill.time).toLocaleString() : ''}</td>
+                    `;
+                    fillsTbody.appendChild(tr);
+                });
+            } else {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${pos.symbol}</td>
-                    <td>${pos.qty}</td>
-                    <td>${parseFloat(pos.market_value).toFixed(2)}</td>
-                    <td>${parseFloat(pos.unrealized_pl).toFixed(2)}</td>
-                    <td>${(parseFloat(pos.unrealized_plpc) * 100).toFixed(2)}%</td>
-                `;
-                tbody.appendChild(tr);
-            });
+                tr.innerHTML = '<td colspan="5">No recent fills</td>';
+                fillsTbody.appendChild(tr);
+            }
         });
     </script>
 </body>
