@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 from alpaca.trading.client import TradingClient
-from alpaca.trading.models import PortfolioHistory
 import matplotlib.pyplot as plt
 import json
 
@@ -14,7 +13,7 @@ ALPACA_API_SECRET = os.getenv("ALPACA_API_SECRET")
 
 trading_client = TradingClient(ALPACA_API_KEY, ALPACA_API_SECRET, paper=True)
 
-# Positions (kept same as before)
+# Positions summary
 positions = trading_client.get_all_positions()
 positions_df = pd.DataFrame([{
     "symbol": p.symbol,
@@ -24,15 +23,24 @@ positions_df = pd.DataFrame([{
     "unrealized_plpc": float(getattr(p, "unrealized_plpc", 0) or 0),
 } for p in positions]) if positions else pd.DataFrame(columns=["symbol","qty","market_value","unrealized_pl","unrealized_plpc"])
 
-# Portfolio history (daily for ~3 months)
-req = PortfolioHistory(period="3M", timeframe="1D", extended_hours=True)
-hist = trading_client.get_portfolio_history(req)
+# Portfolio history (use default range supported by your SDK version)
+hist = trading_client.get_portfolio_history()
 
-# Build equity series
-eq = pd.Series(hist.equity, index=pd.to_datetime(hist.timestamp, unit="s", utc=True)).sort_index()
-eq = eq.astype(float)
+# Extract fields robustly (model or dict-like)
+def field(obj, name, default=None):
+    if hasattr(obj, name):
+        return getattr(obj, name)
+    if isinstance(obj, dict):
+        return obj.get(name, default)
+    return default
 
-# Current and initial equity
+timestamps = field(hist, "timestamp", []) or []
+equities   = field(hist, "equity",   []) or []
+
+# Equity series
+ts = pd.to_datetime(timestamps, unit="s", utc=True) if len(timestamps) else pd.to_datetime([], utc=True)
+eq = pd.Series(equities, index=ts).sort_index().astype(float) if len(equities) else pd.Series(dtype=float)
+
 equity = float(eq.iloc[-1]) if len(eq) else 0.0
 initial_equity = float(eq.iloc[0]) if len(eq) else equity
 last_equity = float(eq.iloc[-2]) if len(eq) > 1 else equity
@@ -40,21 +48,16 @@ last_equity = float(eq.iloc[-2]) if len(eq) > 1 else equity
 def calc_return(start_equity, end_equity):
     return (end_equity / start_equity - 1) * 100 if start_equity else None
 
-# Helper: equity on or before a given datetime
-def equity_on_or_before(ts: pd.Timestamp):
+def equity_on_or_before(t_utc: pd.Timestamp):
     if len(eq) == 0:
         return None
-    sub = eq.loc[:ts]
+    sub = eq.loc[:t_utc]
     return float(sub.iloc[-1]) if len(sub) else None
 
 now_utc = datetime.now(timezone.utc)
-one_day_ago = now_utc - timedelta(days=1)
-one_week_ago = now_utc - timedelta(days=7)
-one_month_ago = now_utc - timedelta(days=30)
-
-eq_1d = equity_on_or_before(pd.Timestamp(one_day_ago))
-eq_1w = equity_on_or_before(pd.Timestamp(one_week_ago))
-eq_1m = equity_on_or_before(pd.Timestamp(one_month_ago))
+eq_1d = equity_on_or_before(now_utc - timedelta(days=1))
+eq_1w = equity_on_or_before(now_utc - timedelta(days=7))
+eq_1m = equity_on_or_before(now_utc - timedelta(days=30))
 
 returns = {
     "total_return_%": calc_return(initial_equity, equity),
@@ -63,7 +66,7 @@ returns = {
     "return_1m_%": calc_return(eq_1m, equity) if eq_1m is not None else None,
 }
 
-# Simple equity bar chart (kept same behavior)
+# Equity bar chart
 plt.figure(figsize=(8, 4))
 plt.bar(["Initial", "Current"], [initial_equity, equity])
 plt.title("Account Equity")
@@ -72,14 +75,14 @@ plt.tight_layout()
 plt.savefig("equity_bar.png")
 plt.close()
 
-# Keep output file structure the same
+# Output JSON (same shape as before)
 stats = {
     "equity": equity,
     "initial_equity": initial_equity,
     "last_equity": last_equity,
     "returns": returns,
     "positions": positions_df.to_dict(orient="records"),
-    "recent_fills": [],  # keeping key for compatibility; portfolio history used for stats
+    "recent_fills": [],
     "last_updated": now_utc.isoformat(),
 }
 
