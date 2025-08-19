@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alpaca Account Stats</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; }
+        .stats { margin-bottom: 2em; }
+        .positions-table, .fills-table { border-collapse: collapse; width: 100%; }
+        .positions-table th, .positions-table td, .fills-table th, .fills-table td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        .positions-table th, .fills-table th { background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Alpaca Account Stats</h1>
+    <div class="stats">
+        <h2>Returns</h2>
+        <ul id="returns-list"></ul>
+        <h2>Account Equity</h2>
+        <div>Current Equity: <span id="equity"></span> USD</div>
+        <div>Initial Equity: <span id="initial-equity"></span> USD</div>
+        <div>Last Updated: <span id="last-updated"></span></div>
+    </div>
+    <h2>Open Positions</h2>
+    <table class="positions-table" id="positions-table">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Quantity</th>
+                <th>Market Value</th>
+                <th>Unrealized P/L</th>
+                <th>Unrealized P/L %</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <script>
+    fetch('alpaca_stats.json')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('equity').textContent = (data.equity ?? 0).toFixed(2);
+            document.getElementById('initial-equity').textContent = (data.initial_equity ?? 0).toFixed(2);
+            document.getElementById('last-updated').textContent = data.last_updated ? new Date(data.last_updated).toLocaleString() : '';
+            // Returns
+            const returnsList = document.getElementById('returns-list');
+            returnsList.innerHTML = '';
+            if (data.returns) {
+                for (const [key, value] of Object.entries(data.returns)) {
+                    const li = document.createElement('li');
+                    li.textContent = `${key.replace(/_/g, ' ')}: ${value !== null && value !== undefined ? value.toFixed(2) + '%' : 'N/A'}`;
+                    returnsList.appendChild(li);
+                }
+            }
+            // Positions
+            const positionsTbody = document.getElementById('positions-table').querySelector('tbody');
+            positionsTbody.innerHTML = '';
+            if (Array.isArray(data.positions)) {
+                data.positions.forEach(pos => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${pos.symbol ?? ''}</td>
+                        <td>${pos.qty ?? ''}</td>
+                        <td>${pos.market_value !== undefined ? parseFloat(pos.market_value).toFixed(2) : ''}</td>
+                        <td>${pos.unrealized_pl !== undefined ? parseFloat(pos.unrealized_pl).toFixed(2) : ''}</td>
+                        <td>${pos.unrealized_plpc !== undefined ? (parseFloat(pos.unrealized_plpc) * 100).toFixed(2) + '%' : ''}</td>
+                    `;
+                    positionsTbody.appendChild(tr);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
