@@ -28,7 +28,7 @@ from config import data_client
 # ---------------- Settings (minimal) ----------------
 SYMBOL = "BTC/USD"
 TIMEFRAME = TimeFrame.Hour
-DAYS = 30               # ~1 year of hourly bars
+DAYS = 360               # ~1 year of hourly bars
 MIN_TRAIN = 300         # warmup (bars) before first forecast
 REFIT_EVERY = 24         # refit once per day
 FEE = 0.0010             # per-trade fee (one-way)
@@ -83,13 +83,36 @@ def backtest(df: pd.DataFrame) -> tuple[dict, pd.DataFrame]:
     equity = 10_000.0
     eq = []
     prev_pos = 0.0
-    for _, row in df.iterrows():
+    trades = []
+    prev_time = None
+    prev_price = None
+    for idx, row in df.iterrows():
         turnover = abs(row["pos_frac_exec"] - prev_pos)
         cost = turnover * (FEE + SLIPPAGE)
         net = row["pos_frac_exec"] * row["ret"] - cost
         equity *= (1.0 + net)
         eq.append(equity)
+        # Record trade if position changes
+        if row["pos_frac_exec"] != prev_pos:
+            side = None
+            if row["pos_frac_exec"] > prev_pos:
+                side = "buy"
+            elif row["pos_frac_exec"] < prev_pos:
+                side = "sell"
+            trade = {
+                "time": idx,
+                "side": side,
+                "prev_pos": prev_pos,
+                "new_pos": row["pos_frac_exec"],
+                "price": row["close"],
+                "turnover": turnover,
+                "cost": cost,
+                "equity": equity
+            }
+            trades.append(trade)
         prev_pos = row["pos_frac_exec"]
+        prev_time = idx
+        prev_price = row["close"]
     df["equity"] = eq
 
     rets = pd.Series(eq, index=df.index).pct_change().dropna()
@@ -108,15 +131,17 @@ def backtest(df: pd.DataFrame) -> tuple[dict, pd.DataFrame]:
         "min_train": MIN_TRAIN,
         "refit_every": REFIT_EVERY,
     }
-    return summary, df
+    trades_df = pd.DataFrame(trades)
+    return summary, df, trades_df
 
 def main():
     np.random.seed(SEED)
     df = fetch_bars()
-    summary, dfbt = backtest(df)
+    summary, dfbt, trades_df = backtest(df)
     print("Summary:", summary)
     dfbt[["close","ret","sigma_hat","pos_frac_exec","equity"]].to_csv("garch_hour_simple_results.csv")
-    print("Saved garch_hour_simple_results.csv")
+    trades_df.to_csv("garch_hour_trades.csv", index=False)
+    print("Saved garch_hour_simple_results.csv and garch_hour_trades.csv")
 
 if __name__ == "__main__":
     main()
