@@ -80,49 +80,71 @@ def backtest(df: pd.DataFrame) -> tuple[dict, pd.DataFrame]:
     frac = np.clip(TARGET_VOL_PER_BAR / (df["sigma_hat"] + 1e-12), 0, MAX_LEVERAGE)
     df["pos_frac_exec"] = frac.shift(1).fillna(0.0)  # execute next bar
 
-    equity = 10_000.0
+    initial_cash = 10_000.0
+    cash = initial_cash
+    position = 0.0  # BTC amount
     eq = []
-    prev_pos = 0.0
     trades = []
-    prev_time = None
-    prev_price = None
+    prev_frac = 0.0
     for idx, row in df.iterrows():
-        turnover = abs(row["pos_frac_exec"] - prev_pos)
-        cost = turnover * (FEE + SLIPPAGE)
-        net = row["pos_frac_exec"] * row["ret"] - cost
-        equity *= (1.0 + net)
-        eq.append(equity)
-        # Record trade if position changes
-        if row["pos_frac_exec"] != prev_pos:
-            side = None
-            if row["pos_frac_exec"] > prev_pos:
+        price = row["close"]
+        target_frac = row["pos_frac_exec"]
+        equity = cash + position * price
+        # Determine target notional and position
+        target_notional = equity * target_frac
+        target_position = target_notional / price
+        delta_position = target_position - position
+        side = None
+        trade_qty = 0.0
+        trade_value = 0.0
+        cost = 0.0
+        # Only trade if position changes
+        if abs(delta_position) > 1e-8:
+            if delta_position > 0:
+                # Buy: check if enough cash
+                max_affordable = cash / price
+                actual_buy = min(delta_position, max_affordable)
+                trade_qty = actual_buy
+                trade_value = trade_qty * price
+                cost = abs(trade_value) * (FEE + SLIPPAGE)
+                cash -= trade_value + cost
+                position += trade_qty
                 side = "buy"
-            elif row["pos_frac_exec"] < prev_pos:
+            else:
+                # Sell: can't sell more than you have
+                actual_sell = min(-delta_position, position)
+                trade_qty = actual_sell
+                trade_value = trade_qty * price
+                cost = abs(trade_value) * (FEE + SLIPPAGE)
+                cash += trade_value - cost
+                position -= trade_qty
                 side = "sell"
             trade = {
                 "time": idx,
                 "side": side,
-                "prev_pos": prev_pos,
-                "new_pos": row["pos_frac_exec"],
-                "price": row["close"],
-                "turnover": turnover,
+                "qty": trade_qty,
+                "price": price,
+                "value": trade_value,
                 "cost": cost,
-                "equity": equity
+                "cash": cash,
+                "position": position,
+                "equity": cash + position * price
             }
             trades.append(trade)
-        prev_pos = row["pos_frac_exec"]
-        prev_time = idx
-        prev_price = row["close"]
+        # Mark-to-market equity
+        eq.append(cash + position * price)
+        prev_frac = target_frac
     df["equity"] = eq
 
     rets = pd.Series(eq, index=df.index).pct_change().dropna()
     sharpe = (rets.mean() / (rets.std() + 1e-12)) * np.sqrt(252 * BARS_PER_DAY) if len(rets)>1 else 0.0
-    cumret = equity / 10_000.0 - 1.0
-    dd = (df["equity"].cummax() - df["equity"]) / df["equity"].cummax()
+    final_equity = eq[-1] if eq else initial_cash
+    cumret = final_equity / initial_cash - 1.0
+    dd = (pd.Series(eq).cummax() - eq) / pd.Series(eq).cummax()
     maxdd = float(dd.max()) if len(dd) else 0.0
 
     summary = {
-        "final_equity": round(equity, 2),
+        "final_equity": round(final_equity, 2),
         "cumulative_return_%": round(cumret * 100, 2),
         "max_drawdown_%": round(maxdd * 100, 2),
         "sharpe_ratio": round(float(sharpe), 2),

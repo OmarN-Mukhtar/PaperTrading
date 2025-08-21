@@ -45,7 +45,7 @@ SLIPPAGE = 0.0005
 TARGET_DAILY_VOL = 0.02 # 2% daily
 BARS_PER_DAY = 24
 TARGET_VOL_PER_HOUR = TARGET_DAILY_VOL / sqrt(BARS_PER_DAY)
-MAX_LEVERAGE = 0.1
+MAX_LEVERAGE = 1.0
 POLL_SECONDS = 30
 MIN_TRADE_USD = 25.0    # skip dust adjustments
 SCALE = 100.0
@@ -138,7 +138,13 @@ def run_live():
     last_ts = latest_closed_ts(df)
     print(f"[INIT] Last closed bar: {last_ts}")
 
+    start_time = time.time()
+    max_duration = 180  # 3 minutes in seconds
+
     while True:
+        if time.time() - start_time > max_duration:
+            print("[INFO] Max runtime reached, exiting.")
+            break
         try:
             # Wait for a new closed hourly bar
             time.sleep(POLL_SECONDS)
@@ -161,7 +167,7 @@ def run_live():
             px = float(df["close"].iloc[-1])
             target_notional = equity * frac
 
-            qty = get_open_qty(SYMBOL)
+            qty = get_open_qty('BTCUSD')
             current_notional = qty * px
             delta = target_notional - current_notional
 
@@ -187,7 +193,6 @@ def run_live():
                     print("[ACTION] tiny sell -> HOLD")
                 else:
                     submit_sell_qty(SYMBOL, sell_qty)
-
 
             last_ts = ts
 
