@@ -142,9 +142,6 @@ def run_live():
     max_duration = 180  # 3 minutes in seconds
 
     while True:
-        if time.time() - start_time > max_duration:
-            print("[INFO] Max runtime reached, exiting.")
-            break
         try:
             # Wait for a new closed hourly bar
             time.sleep(POLL_SECONDS)
