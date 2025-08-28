@@ -1,21 +1,21 @@
 {
-  "equity": 99530.27,
+  "equity": 95250.13,
   "initial_equity": 100000.0,
-  "last_equity": 100000.0,
+  "last_equity": 94949.87,
   "returns": {
-    "total_return_%": -0.46972999999999043,
-    "return_1d_%": -0.46972999999999043,
-    "return_1w_%": -0.46972999999999043,
+    "total_return_%": -4.7498700000000005,
+    "return_1d_%": 0.3162300274871521,
+    "return_1w_%": -2.7225296969072943,
     "return_1m_%": null
   },
   "positions": [
     {
       "symbol": "BTCUSD",
-      "qty": 0.85464269,
-      "market_value": 98609.243619,
-      "unrealized_pl": -1135.014294,
-      "unrealized_plpc": -0.0113792444572598
+      "qty": 0.85320349,
+      "market_value": 96292.376947,
+      "unrealized_pl": -2981.1778,
+      "unrealized_plpc": -0.0300299289936537
     }
   ],
-  "last_updated": "2025-08-19T09:39:31.189944+00:00"
+  "last_updated": "2025-08-28T14:02:44.697681+00:00"
 }
