@@ -31,6 +31,14 @@ jobs:
         run: |
           python alpaca_stats.py
 
+      - name: Commit and push generated files to trading repo
+        run: |
+          git config user.name "OmarN-Mukhtar"
+          git config user.email "omarnabilmukhtar@gmail.com"
+          git add alpaca_stats.html alpaca_stats.json equity_bar.png
+          git commit -m "Update Alpaca stats output files" || echo "No changes to commit"
+          git push
+
       - name: Checkout website repos
         uses: actions/checkout@v4
         with:
