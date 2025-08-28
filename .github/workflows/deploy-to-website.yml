@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          token: ${{ secrets.TRADING_ACCESS_TOKEN }}  # <-- Add a PAT with repo scope to your repo secrets
+          token: ${{ secrets.WEBSITE_REPO_TOKEN }}  # <-- Add a PAT with repo scope to your repo secrets
 
       - name: Set up Python
         uses: actions/setup-python@v5
