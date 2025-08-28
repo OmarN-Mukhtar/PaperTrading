@@ -38,6 +38,7 @@ jobs:
           git config user.email "omarnabilmukhtar@gmail.com"
           git add alpaca_stats.html alpaca_stats.json equity_bar.png
           git commit -m "Update Alpaca stats output files" || echo "No changes to commit"
+          git pull --rebase
           git push
 
       - name: Checkout website repos
