@@ -117,19 +117,23 @@ def submit_buy_notional(symbol: str, notional: float):
         order = MarketOrderRequest(symbol=symbol, notional=round(notional, 2), side=OrderSide.BUY, time_in_force=TimeInForce.GTC)
         resp = trading_client.submit_order(order)
         print(f"[BUY] ${notional:.2f} submitted. id={resp.id}")
+        return True
     except Exception as e:
         print(f"[ERROR] BUY failed: {e}")
+    return False
 
 
 def submit_sell_qty(symbol: str, qty: float):
-    if qty <= 0: 
-        return
+    if qty <= 0:
+        return False
     try:
         order = MarketOrderRequest(symbol=symbol, qty=str(qty), side=OrderSide.SELL, time_in_force=TimeInForce.GTC)
         resp = trading_client.submit_order(order)
         print(f"[SELL] {qty:.8f} {symbol.split('/')[0]} submitted. id={resp.id}")
+        return True
     except Exception as e:
         print(f"[ERROR] SELL failed: {e}")
+    return False
 
 
 def run_live():
@@ -172,24 +176,35 @@ def run_live():
                 f"equity={equity:.2f} cash={cash:.2f} target=${target_notional:.2f} "
                 f"current=${current_notional:.2f} delta=${delta:.2f}")
 
+
             if abs(delta) < MIN_TRADE_USD:
-                print("[ACTION] delta < MIN_TRADE_USD -> HOLD")
+                print(f"[ACTION] HOLD: delta (${delta:.2f}) < MIN_TRADE_USD (${MIN_TRADE_USD:.2f})")
+                print(f"[BREAK] No action taken because delta (${delta:.2f}) is too small.")
+                break
 
             elif delta > 0:
                 # BUY: clamp by available cash (leave a few dollars as buffer)
                 buy_notional = min(delta, max(cash - 5.0, 0.0))
                 if buy_notional < MIN_TRADE_USD:
-                    print("[ACTION] insufficient cash -> HOLD")
+                    print(f"[ACTION] HOLD: insufficient cash (${cash:.2f}) for buy_notional (${buy_notional:.2f}) < MIN_TRADE_USD (${MIN_TRADE_USD:.2f})")
+                    print(f"[BREAK] No action taken because available cash (${cash:.2f}) is insufficient for minimum trade.")
+                    break
                 else:
-                    submit_buy_notional(SYMBOL, buy_notional)
+                    if submit_buy_notional(SYMBOL, buy_notional):
+                        print(f"[BREAK] Action taken: BUY ${buy_notional:.2f} {SYMBOL} (amount: ${buy_notional:.2f}, total value: ${buy_notional:.2f})")
+                        break
 
             else:
                 # SELL: never sell more than you own
                 sell_qty = min(abs(delta) / px, qty)
                 if sell_qty * px < MIN_TRADE_USD:
-                    print("[ACTION] tiny sell -> HOLD")
+                    print(f"[ACTION] HOLD: tiny sell (${sell_qty * px:.2f}) < MIN_TRADE_USD (${MIN_TRADE_USD:.2f})")
+                    print(f"[BREAK] No action taken because sell amount (${sell_qty * px:.2f}) is too small.")
+                    break
                 else:
-                    submit_sell_qty(SYMBOL, sell_qty)
+                    if submit_sell_qty(SYMBOL, sell_qty):
+                        print(f"[BREAK] Action taken: SELL {sell_qty:.8f} {SYMBOL.split('/')[0]} (amount: {sell_qty:.8f}, total value: ${sell_qty * px:.2f})")
+                        break
 
             last_ts = ts
 
