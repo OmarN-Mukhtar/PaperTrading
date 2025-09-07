@@ -15,11 +15,6 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.WEBSITE_REPO_TOKEN }}  # <-- Add a PAT with repo scope to your repo secrets
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9.23'
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
