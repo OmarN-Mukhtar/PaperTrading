@@ -12,10 +12,10 @@
     {
       "symbol": "BTCUSD",
       "qty": 0.850795007,
-      "market_value": 105143.033635,
-      "unrealized_pl": 10628.366468,
-      "unrealized_plpc": 0.1124520329656402
+      "market_value": 104941.914203,
+      "unrealized_pl": 10427.247036,
+      "unrealized_plpc": 0.1103241152780644
     }
   ],
-  "last_updated": "2025-10-05T12:26:12.283532+00:00"
+  "last_updated": "2025-10-05T13:18:29.362282+00:00"
 }
