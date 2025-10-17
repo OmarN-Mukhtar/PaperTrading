@@ -6,16 +6,16 @@
     "total_return_%": -7.52524,
     "return_1d_%": -2.5129121310938363,
     "return_1w_%": -10.777747975308117,
-    "return_1m_%": -6.903794902110061
+    "return_1m_%": null
   },
   "positions": [
     {
       "symbol": "BTCUSD",
       "qty": 0.850795007,
-      "market_value": 89603.51807,
-      "unrealized_pl": -4911.149097,
-      "unrealized_plpc": -0.0519617668263317
+      "market_value": 89934.88571,
+      "unrealized_pl": -4579.781457,
+      "unrealized_plpc": -0.048455775111686
     }
   ],
-  "last_updated": "2025-10-17T13:24:33.934458+00:00"
+  "last_updated": "2025-10-17T14:15:17.006807+00:00"
 }
