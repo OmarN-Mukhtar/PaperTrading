@@ -1,7 +1,7 @@
 {
   "equity": 6.49,
   "initial_equity": 100000.0,
-  "last_equity": 93458.53,
+  "last_equity": 6.49,
   "returns": {
     "total_return_%": -99.99351,
     "return_1d_%": 0.0,
@@ -9,5 +9,5 @@
     "return_1m_%": -99.99389308150121
   },
   "positions": [],
-  "last_updated": "2025-11-06T09:17:47.198927+00:00"
+  "last_updated": "2025-11-06T10:18:26.900989+00:00"
 }
